@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TikTok Account Manager</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{color-scheme:dark;--bg:#0b1020;--panel:#121a2c;--line:#28354d;--muted:#aab6ca;--text:#f4f7fc;--accent:#38bdf8;--green:#34d399;--red:#fb7185}
+*{box-sizing:border-box}body{margin:0;background:linear-gradient(135deg,#0b1020,#111827);font:15px/1.5 system-ui,-apple-system,Segoe UI,sans-serif;color:var(--text)}
+.wrap{max-width:1050px;margin:auto;padding:24px}.top{display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:20px}
+.brand{display:flex;gap:12px;align-items:center}.logo{display:grid;place-items:center;width:48px;height:48px;border-radius:15px;background:linear-gradient(135deg,#25f4ee,#fe2c55);font-weight:900;color:#07111d;font-size:23px}
+h1{font-size:25px;margin:0}.sub,.muted,.hint{color:var(--muted);font-size:13px}.panel{background:rgba(18,26,44,.96);border:1px solid var(--line);border-radius:16px;padding:18px;margin:14px 0}
+h2{font-size:17px;margin:0 0 12px}.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.stat{background:#10192b;border:1px solid var(--line);border-radius:14px;padding:15px}.stat small{color:var(--muted)}.num{font-size:27px;font-weight:750;margin-top:4px}
+.formgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.field{min-width:0}.full{grid-column:1/-1}label{display:block;font-size:13px;color:var(--muted);margin-bottom:5px}
+input{width:100%;background:#0a1222;color:var(--text);border:1px solid #34435e;border-radius:9px;padding:11px;font:inherit;min-width:0}input:focus{outline:2px solid #38bdf880;border-color:var(--accent)}
+button{border:0;border-radius:9px;padding:10px 14px;background:var(--accent);color:#07111d;font-weight:750;font:inherit;cursor:pointer}button.secondary{background:#26344c;color:var(--text)}button.danger{background:#4b2030;color:#ffd7df}button:disabled{opacity:.5;cursor:not-allowed}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.status{padding:12px;border:1px solid var(--line);border-radius:10px;margin:12px 0;color:var(--muted);white-space:pre-wrap;overflow-wrap:anywhere}.status.good{border-color:#166534;color:#bbf7d0}.status.error{border-color:#9f3548;color:#fecdd3}
+.tablewrap{overflow:auto}table{width:100%;border-collapse:collapse;min-width:650px}th,td{text-align:left;padding:11px 9px;border-bottom:1px solid var(--line)}th{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.04em}.pill{display:inline-block;padding:3px 9px;border-radius:99px;font-size:12px;background:#3b2d18;color:#fcd34d}.pill.active{background:#123b32;color:#a7f3d0}.empty{text-align:center;color:var(--muted);padding:22px}
+.hide{display:none!important}.bar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}.search{max-width:300px}.hint{margin-top:8px;line-height:1.6}
+@media(max-width:650px){.wrap{padding:14px}.grid{grid-template-columns:1fr}.formgrid{grid-template-columns:1fr}.full{grid-column:auto}h1{font-size:21px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+  <div class="brand"><div class="logo">♪</div><div><h1>TikTok Account Manager</h1><div class="sub">Dashboard multi-akun pribadi · Supabase</div></div></div>
+  <button class="secondary" id="logoutBtn" disabled>Keluar</button>
+</header>
+
+<div id="status" class="status">Siapkan koneksi Supabase, lalu masuk ke akun admin.</div>
+
+<section class="panel" id="setupPanel">
+  <h2>1. Koneksi Supabase</h2>
+  <div class="formgrid">
+    <div class="field full"><label for="projectUrl">Project URL</label><input id="projectUrl" value="https://ucqnxjmbdjhsegxuafox.supabase.co" autocomplete="url"></div>
+    <div class="field full"><label for="anonKey">Publishable key / anon public key</label><input id="anonKey" type="password" placeholder="Tempel key public Supabase di sini" autocomplete="off"></div>
+  </div>
+  <div class="actions"><button id="connectBtn">Hubungkan Supabase</button></div>
+  <div class="hint">Gunakan hanya publishable key atau anon public key. Jangan masukkan service_role key atau secret key ke halaman web.</div>
+</section>
+
+<section class="panel hide" id="authPanel">
+  <h2>2. Login admin</h2>
+  <div class="formgrid">
+    <div class="field"><label for="email">Email</label><input id="email" type="email" autocomplete="username" placeholder="email Anda"></div>
+    <div class="field"><label for="password">Password akun aplikasi</label><input id="password" type="password" autocomplete="current-password" placeholder="Password Supabase Auth"></div>
+  </div>
+  <div class="actions"><button id="loginBtn">Masuk</button><button class="secondary" id="signupBtn">Buat akun admin</button></div>
+  <div class="hint">Ini adalah akun login aplikasi Anda, bukan password TikTok. Jika pendaftaran meminta konfirmasi email, buka email untuk mengonfirmasi.</div>
+</section>
+
+<div id="appPanel" class="hide">
+  <section class="grid">
+    <div class="stat"><small>Total akun tersimpan</small><div class="num" id="total">0</div></div>
+    <div class="stat"><small>Status aktif</small><div class="num" id="activeTotal">0</div></div>
+    <div class="stat"><small>Status database</small><div class="num" id="dbState">Terhubung</div></div>
+  </section>
+
+  <section class="panel">
+    <h2>3. Tambah akun TikTok</h2>
+    <div class="formgrid">
+      <div class="field"><label for="username">Username TikTok *</label><input id="username" placeholder="@namaakun" maxlength="100"></div>
+      <div class="field"><label for="displayName">Nama tampilan (opsional)</label><input id="displayName" placeholder="Nama akun"></div>
+      <div class="field"><label for="profileKey">Kode profil Chrome (opsional)</label><input id="profileKey" placeholder="Contoh: tiktok-01"></div>
+      <div class="field"><label for="loginStatus">Status login</label><select id="loginStatus" style="width:100%;background:#0a1222;color:#f4f7fc;border:1px solid #34435e;border-radius:9px;padding:11px;font:inherit"><option value="pending">Belum diperiksa</option><option value="active">Login aktif (ditandai manual)</option><option value="expired">Login kedaluwarsa</option></select></div>
+      <div class="field full"><label for="notes">Catatan (opsional)</label><input id="notes" placeholder="Catatan untuk akun ini"></div>
+    </div>
+    <div class="actions"><button id="addBtn">Simpan akun</button><button class="secondary" id="refreshBtn">Muat ulang daftar</button></div>
+    <div class="hint">Status login saat ini adalah catatan manual, bukan verifikasi otomatis dari TikTok. Password dan cookie TikTok tidak disimpan.</div>
+  </section>
+
+  <section class="panel">
+    <div class="bar"><h2 style="margin:0">Daftar akun TikTok</h2><input id="search" class="search" placeholder="Cari username atau nama..."></div>
+    <div class="tablewrap" style="margin-top:12px"><table><thead><tr><th>Username</th><th>Nama tampilan</th><th>Status</th><th>Profil Chrome</th><th>Aksi</th></tr></thead><tbody id="accounts"><tr><td colspan="5" class="empty">Memuat akun...</td></tr></tbody></table></div>
+    <div class="hint">Tombol Buka TikTok membuka halaman profil publik. Pengendalian profil Chrome lokal akan ditambahkan pada tahap berikutnya melalui penghubung yang berjalan di PC.</div>
+  </section>
+</div>
+</div>
+
+<script>
+const PROJECT_DEFAULT = 'https://ucqnxjmbdjhsegxuafox.supabase.co';
+let sb = null;
+let accountRows = [];
+const $ = id => document.getElementById(id);
+function showStatus(message, type=''){ $('status').className='status '+type; $('status').textContent=message; }
+function escapeHtml(value){return String(value ?? '').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function normalizeUsername(value){return String(value||'').trim().replace(/^@+/, '').replace(/^https?:\/\/(www\.)?tiktok\.com\/@?/i,'').replace(/\/.*$/,'');}
+function validUsername(value){return /^[A-Za-z0-9._]{1,24}$/.test(value);}
+function render(){
+ const q=$('search').value.trim().toLowerCase();
+ const rows=accountRows.filter(r=>String(r.username||'').toLowerCase().includes(q)||String(r.display_name||'').toLowerCase().includes(q));
+ $('total').textContent=accountRows.length;
+ $('activeTotal').textContent=accountRows.filter(r=>r.login_status==='active').length;
+ $('accounts').innerHTML=rows.length?rows.map(r=>{
+   const status=r.login_status||'pending';
+   return `<tr>
+    <td><strong>@${escapeHtml(r.username)}</strong></td>
+    <td>${escapeHtml(r.display_name||'—')}</td>
+    <td><span class="pill ${status==='active'?'active':''}">${escapeHtml(status)}</span></td>
+    <td>${escapeHtml(r.chrome_profile_key||'—')}</td>
+    <td><div class="actions" style="margin:0"><button class="secondary" data-open="${escapeHtml(r.username)}">Buka TikTok</button><button class="secondary" data-edit="${escapeHtml(r.id)}">Ubah status</button><button class="danger" data-delete="${escapeHtml(r.id)}">Hapus</button></div></td>
+   </tr>`;
+ }).join(''):`<tr><td colspan="5" class="empty">${q?'Tidak ada akun yang cocok.':'Belum ada akun. Tambahkan akun pertama Anda.'}</td></tr>`;
+}
+async function loadAccounts(){
+ if(!sb) return;
+ const {data:{user},error:userError}=await sb.auth.getUser();
+ if(userError||!user){$('appPanel').classList.add('hide');$('authPanel').classList.remove('hide');$('logoutBtn').disabled=true;return;}
+ $('authPanel').classList.add('hide');$('appPanel').classList.remove('hide');$('logoutBtn').disabled=false;
+ $('dbState').textContent='Memuat...';
+ const {data,error}=await sb.from('tiktok_accounts').select('id,username,display_name,chrome_profile_key,login_status,notes,created_at').order('created_at',{ascending:false}).limit(500);
+ if(error){$('dbState').textContent='Error';showStatus('Gagal memuat tabel tiktok_accounts: '+error.message,'error');return;}
+ accountRows=data||[];render();$('dbState').textContent='Terhubung';showStatus('Terhubung ke Supabase. '+accountRows.length+' akun dimuat.','good');
+}
+$('connectBtn').addEventListener('click',async()=>{
+ const url=$('projectUrl').value.trim().replace(/\/+$/,'');const key=$('anonKey').value.trim();
+ if(!/^https:\/\/[a-z0-9-]+\.supabase\.co$/i.test(url)){showStatus('Project URL Supabase tidak valid.','error');return;}
+ if(!key){showStatus('Tempel publishable key atau anon public key terlebih dahulu.','error');return;}
+ if(!window.supabase){showStatus('Pustaka Supabase gagal dimuat. Periksa koneksi internet.','error');return;}
+ try{
+  sb=window.supabase.createClient(url,key);
+  const {data:{session},error}=await sb.auth.getSession();if(error)throw error;
+  $('setupPanel').classList.add('hide');
+  if(session){await loadAccounts();}else{$('authPanel').classList.remove('hide');showStatus('Koneksi Supabase siap. Silakan masuk atau buat akun admin.','good');}
+  sb.auth.onAuthStateChange((event,session)=>{if(session){setTimeout(()=>loadAccounts(),0);}else if(event==='SIGNED_OUT'){$('appPanel').classList.add('hide');$('authPanel').classList.remove('hide');}});
+ }catch(e){showStatus('Gagal menghubungkan Supabase: '+(e.message||String(e)),'error');}
+});
+$('loginBtn').addEventListener('click',async()=>{
+ if(!sb)return;const email=$('email').value.trim(),password=$('password').value;
+ if(!email||!password){showStatus('Isi email dan password akun aplikasi.');return;}
+ const {error}=await sb.auth.signInWithPassword({email,password});
+ if(error){showStatus('Login gagal: '+error.message,'error');return;}await loadAccounts();
+});
+$('signupBtn').addEventListener('click',async()=>{
+ if(!sb)return;const email=$('email').value.trim(),password=$('password').value;
+ if(!email||password.length<8){showStatus('Isi email dan password minimal 8 karakter.','error');return;}
+ const {data,error}=await sb.auth.signUp({email,password});
+ if(error){showStatus('Pendaftaran gagal: '+error.message,'error');return;}
+ if(data.session){await loadAccounts();}else{showStatus('Pendaftaran berhasil diminta. Periksa email untuk konfirmasi, lalu masuk kembali.','good');}
+});
+$('logoutBtn').addEventListener('click',async()=>{if(sb){const {error}=await sb.auth.signOut();if(error)showStatus(error.message,'error');else showStatus('Anda sudah keluar.','good');}});
+$('addBtn').addEventListener('click',async()=>{
+ if(!sb)return;
+ const username=normalizeUsername($('username').value);
+ if(!validUsername(username)){showStatus('Username tidak valid. Masukkan username TikTok, tanpa spasi.','error');return;}
+ const {data:{user},error:userError}=await sb.auth.getUser();if(userError||!user){showStatus('Silakan login kembali.','error');return;}
+ const payload={user_id:user.id,username,display_name:$('displayName').value.trim()||null,chrome_profile_key:$('profileKey').value.trim()||null,login_status:$('loginStatus').value,notes:$('notes').value.trim()||null};
+ const {error}=await sb.from('tiktok_accounts').insert(payload);
+ if(error){showStatus('Gagal menyimpan akun: '+error.message,'error');return;}
+ $('username').value='';$('displayName').value='';$('profileKey').value='';$('notes').value='';$('loginStatus').value='pending';
+ await loadAccounts();
+});
+$('refreshBtn').addEventListener('click',loadAccounts);
+$('search').addEventListener('input',render);
+$('accounts').addEventListener('click',async e=>{
+ const open=e.target.closest('[data-open]');const edit=e.target.closest('[data-edit]');const del=e.target.closest('[data-delete]');
+ if(open){window.open('https://www.tiktok.com/@'+encodeURIComponent(open.dataset.open),'_blank','noopener,noreferrer');return;}
+ if(edit){
+  const row=accountRows.find(r=>r.id===edit.dataset.edit);if(!row)return;
+  const next=prompt('Pilih status: pending, active, atau expired',row.login_status||'pending');
+  if(next===null)return;
+  if(!['pending','active','expired'].includes(next.trim().toLowerCase())){showStatus('Status harus pending, active, atau expired.','error');return;}
+  const {error}=await sb.from('tiktok_accounts').update({login_status:next.trim().toLowerCase(),updated_at:new Date().toISOString()}).eq('id',row.id);
+  if(error){showStatus('Gagal mengubah status: '+error.message,'error');return;}await loadAccounts();return;
+ }
+ if(del){
+  const row=accountRows.find(r=>r.id===del.dataset.delete);if(!row)return;
+  if(!confirm('Hapus akun @'+row.username+' dari daftar aplikasi? Ini tidak menghapus akun TikTok.'))return;
+  const {error}=await sb.from('tiktok_accounts').delete().eq('id',row.id);
+  if(error){showStatus('Gagal menghapus: '+error.message,'error');return;}await loadAccounts();
+ }
+});
+</script>
+</body>
+</html>
